@@ -8,8 +8,6 @@ RUN tar zxvf go-ipfs_v0.29.0_linux-amd64.tar.gz
 RUN cd go-ipfs; ./install.sh
 
 COPY launch.sh /bin
-COPY form.html /opt/frontend
-COPY style.css /opt/frontend
 RUN chmod +x /bin/launch.sh
 
 
