@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "seeker.fullname" . }}
+  labels:
+    {{- include "seeker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "seeker.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "seeker.name" . }}
+    spec:
+      containers:
+        - name: seeker
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+

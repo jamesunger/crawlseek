@@ -1,0 +1,69 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.App {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    width: 300px;
+}
+
+h1 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+}
+
+h2 {
+    font-size: 1em;
+    margin-bottom: 20px;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+}
+
+.colContainer {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.col {
+    flex: 1;
+    margin-right: 10px;
+    min-width: 100px;
+}
+input[type="text"], select {
+    width: calc(100% - 10px); /* Adjusting for margin */
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+input[type="submit"] {
+    cursor: pointer;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+input[type="submit"]:hover {
+    background: #218838;
+}
