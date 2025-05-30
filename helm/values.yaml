@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: rg.fr-par.scw.cloud/crawlseek-cr/frontend
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   name: frontend

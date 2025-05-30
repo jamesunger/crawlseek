@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: rg.fr-par.scw.cloud/crawlseek-cr/seeker
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   name: seeker
