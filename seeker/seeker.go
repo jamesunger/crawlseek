@@ -53,6 +53,16 @@ func randint64() (uint64, error) {
     return uint64(binary.LittleEndian.Uint64(b[:])), nil
 }
 
+
+// Validate that the input string does not contain dangerous characters
+func isValidInput(input string) bool {
+        // Define a regex pattern to disallow dangerous characters (e.g., ; & | $ ` \)
+        pattern := `^[\w\-\.]+$` // allows only alphanumeric characters, hyphens, dots, and underscores
+        return regexp.MustCompile(pattern).MatchString(input)
+}
+
+
+
 func subscribe_topic(topic string) {
 	for {
 		sub, _ := sh.PubSubSubscribe(topic)
@@ -69,20 +79,31 @@ func subscribe_topic(topic string) {
 		}
 
 
+
+
+
 		depth := fmt.Sprintf("%d",sk.Depth)
 		sr.Host = hostname
 		sr.CrawlVersion = sk.CrawlVersion
 
-		for i := 1; i < sk.Attempts; i++ {
+		for i := 1; i <= sk.Attempts; i++ {
 			fmt.Println("Attempt",i)
 
 			seed,_ := randint64()
 			seedstr := fmt.Sprintf("%d",seed)
 			sr.Seed = seedstr
+
+                        // Validate input
+                        if !isValidInput(sr.CrawlVersion) || !isValidInput(seedstr) || !isValidInput(depth) {
+                                fmt.Println("Input validation failed for attempt:", i)
+                                break;
+                        }
+
+
 			// to get version ./crawl -version | head -n 1 | cut -f 3 -d ' '
 			//cmd := exec.Command("/home/junger/crawl/crawl-ref/source/util/fake_pty","/home/junger/crawl/crawl-ref/source/crawl-debug", "-script", "seed_explorer.lua", "-seed", "random", "-depth", depth, "-artefacts")
-			cmdstring := fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty /crawl/%s/crawl-ref/source/crawl -script seed_explorer.lua -seed %s -depth %s",sr.CrawlVersion, sr.CrawlVersion, seedstr,depth)
-			fmt.Println("Cmdring:",cmdstring)
+			//cmdstring := fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty /crawl/%s/crawl-ref/source/crawl -script seed_explorer.lua -seed %s -depth %s",sr.CrawlVersion, sr.CrawlVersion, seedstr,depth)
+			//fmt.Println("Cmdring:",cmdstring)
 			cmd := exec.Command(fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty",sr.CrawlVersion),fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/crawl", sr.CrawlVersion), "-script", "seed_explorer.lua", "-seed", seedstr, "-depth", depth)
 			fmt.Println("Cmd path:",cmd.Path)
 			cmd.Dir = fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source", sr.CrawlVersion)
@@ -142,3 +163,4 @@ func subscribe_topic(topic string) {
 	}
 
 }
+
