@@ -21,6 +21,8 @@ function App() {
                                 <option value="0.29.1">0.29.1</option>
                                 <option value="0.30.2">0.30.2</option>
                                 <option value="0.31.2">0.31.2</option>
+                                <option value="0.32.1">0.32.1</option>
+                                <option value="0.33.0">0.33.0</option>
                             </select>
                         </div>
                     </div>

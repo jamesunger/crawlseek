@@ -13,7 +13,7 @@ RUN mkdir -p /opt/seeker/bin /crawl/trunk
 RUN git clone https://github.com/crawl/crawl.git /crawl/trunk/crawl
 
 # Define versions to build
-ENV CRAWL_VERSIONS="0.24.1 0.25.1 0.26.1 0.27.1 0.28.0 0.29.1 0.30.2 0.31.2"
+ENV CRAWL_VERSIONS="0.24.1 0.25.1 0.26.1 0.27.1 0.28.0 0.29.1 0.30.2 0.31.2 0.32.1 0.33.0"
 
 # Build each version of crawl
 RUN for version in $CRAWL_VERSIONS; do \
