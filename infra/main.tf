@@ -40,8 +40,8 @@ resource "scaleway_k8s_pool"  "node_pool" {
 
     name = "crawlseek-1"
     cluster_id  = scaleway_k8s_cluster.my_k8s_cluster.id
-    node_type = "DEV1-M"
-    external_traffic_policy = "true"
+    node_type = "DEV1-L"
+    #external_traffic_policy = "true"
 
 
 
