@@ -12,12 +12,15 @@ import (
 	"strconv"
 	"time"
 	"strings"
+	"sync"
 	//ipfsapi "github.com/ipfs/go-ipfs-api"
 	shell "github.com/ipfs/go-ipfs-api"
 	// "flag"
 )
 
 var sh = shell.NewShell("localhost:5001")
+var fileMutex sync.Mutex // Create a mutex for file access synchronization
+
 
 type SeekQuery struct {
 	Uuid         string
@@ -143,6 +146,10 @@ func monitor_results(topic string) {
 		//fmt.Println("Got result", string(sr.Output))
 		fmt.Println("Got result", sr.Uuid)
 
+
+
+		// Lock the file for writing
+                fileMutex.Lock()
 		if sr.Success {
 
 			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
@@ -182,6 +189,7 @@ func monitor_results(topic string) {
 				fmt.Println("Error writing to fail result:", err)
 			}
 		}
+		fileMutex.Unlock()
 
 	}
 
