@@ -91,7 +91,7 @@ func main() {
 
 		// Ensure that attempts and depth are valid numbers
 		atmpt, err := strconv.Atoi(attempts)
-		if err != nil || atmpt <= 0 || atmpt > 10 {
+		if err != nil || atmpt <= 0 || atmpt > 20 {
 			http.Error(w, "Attempts must be a positive number and less than 20.", http.StatusBadRequest)
 			return
 		}
@@ -109,7 +109,10 @@ func main() {
 			CrawlVersion: version}
 		publish_sk(sk)
 
-		fmt.Fprintf(w, "<p>Query is published and results are collected here.</p><a href=\"/results/%s.html\">results/%s.html</a>", sk.Uuid, sk.Uuid)
+		fmt.Fprintf(w, `<p>Query is published and results are collected here.</p>
+		<p>Redirecting in 5 seconds...</p>
+		<meta http-equiv="refresh" content="5; url=/results/%s.html" />
+		<a href="/results/%s.html">If you are not redirected, click here.</a>`, sk.Uuid, sk.Uuid)
 
 	})
 
@@ -167,15 +170,6 @@ func monitor_results(topic string) {
 			if err != nil {
 				fmt.Println("Failed to pin output to IPFS.")
 			}
-
-			//fdone, err := os.OpenFile(fmt.Sprintf("results/%s.html.done", sr.Uuid),
-			//	os.O_APPEND|os.O_WRONLY, 0644)
-			//if err != nil {
-			//	fmt.Println("Error opening done file", err)
-			//	continue
-			//}
-			//defer fdone.Close()
-			//fdone.WriteString("done")
 
 		} else {
 			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
