@@ -161,7 +161,6 @@ func monitor_results(topic string) {
 				fmt.Println("Error opening file for success append", err)
 				continue
 			}
-			defer f.Close()
 			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s %s <a href=\"/result?resulthash=%s\">%s</a></p>\n", sr.Host, sr.CrawlVersion, sr.Seed, sr.IPFSHash, sr.IPFSHash)); err != nil {
 				fmt.Println("Error writing to result :", err)
 			}
@@ -170,6 +169,7 @@ func monitor_results(topic string) {
 			if err != nil {
 				fmt.Println("Failed to pin output to IPFS.")
 			}
+			f.Close()
 
 		} else {
 			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
@@ -178,10 +178,10 @@ func monitor_results(topic string) {
 				fmt.Println("Error opening file for append", err)
 				continue
 			}
-			defer f.Close()
 			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s gave up</a></p>\n", sr.Host, sr.CrawlVersion)); err != nil {
 				fmt.Println("Error writing to fail result:", err)
 			}
+			f.Close()
 		}
 		fileMutex.Unlock()
 
@@ -228,53 +228,3 @@ func monitor_queries(topic string) {
 	}
 }
 
-func monitor_stale_files(dir string) {
-	for {
-		oneMinuteAgo := time.Now().Add(-1 * time.Minute)
-		files, err := ioutil.ReadDir(dir)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, file := range files {
-			filepath := fmt.Sprintf("%s/%s",dir,file.Name())
-			if strings.HasSuffix(filepath,".html") {
-				// Check if the .done file exists
-				doneFilePath := filepath + ".done"
-				if _, err := os.Stat(doneFilePath); os.IsNotExist(err) {
-					// Check the modification time of the HTML file
-					if file.ModTime().Before(oneMinuteAgo) {
-
-						f, err := os.OpenFile((filepath),
-							os.O_APPEND|os.O_WRONLY, 0644)
-						if err != nil {
-							fmt.Println("Error opening file for append", err)
-							continue
-						}
-						defer f.Close()
-						f.WriteString("This job never received any results from workers. Perhaps they are offline or were during the request.")
-
-
-
-						fdone, err := os.OpenFile((doneFilePath),
-							os.O_WRONLY, 0644)
-						if err != nil {
-							fmt.Println("Error opening done file", err)
-							continue
-						}
-						fdone.WriteString("never got results")
-						defer fdone.Close()
-
-
-
-					}
-				}
-			}
-		}
-
-	}
-
-
-	 time.Sleep(30 * time.Second)
-
-}
