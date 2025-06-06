@@ -10,8 +10,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"time"
-	"strings"
 	"sync"
 	//ipfsapi "github.com/ipfs/go-ipfs-api"
 	shell "github.com/ipfs/go-ipfs-api"
@@ -224,7 +222,7 @@ func monitor_queries(topic string) {
 			continue
 		}
 
-		ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte(fmt.Sprintf("<p>Version: %s</p></p>", sr.CrawlVersion)), 0644)
+		        ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte(fmt.Sprintf("<p>Version: %s</p>\n<meta http-equiv=\"refresh\" content=\"5; url=/results/%s.html\" />", sr.CrawlVersion, sr.Uuid)), 0644)
 	}
 }
 
