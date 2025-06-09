@@ -16,54 +16,46 @@ import (
 
 type SeekQuery struct {
 	Uuid         string
-	Attempts     int
-	Depth        int
+	Attempts    int
+	Depth       int
 	CrawlVersion string
-	Regexp       string
+	Regexp      string
 }
 
 type SeekResult struct {
-	Uuid         string
-	Success      bool
+	Uuid        string
+	Success     bool
 	CrawlVersion string
-	IPFSHash     string
-	Host         string
-	Seed         string
+	IPFSHash    string
+	Host       string
+	Seed       string
 }
 
 var sh = shell.NewShell("localhost:5001")
-var hostname, _ = os.Hostname()
 
-func main() {
-
-	subscribe_topic("crawlseedqueries")
-
-}
 
 func randint64() (uint64, error) {
 	var b [8]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		return 0, err
 	}
-	//return int64(math.Abs(float64(binary.LittleEndian.Uint64(b[:])))), nil
 	return uint64(binary.LittleEndian.Uint64(b[:])), nil
 }
 
-// Validate that the input string does not contain dangerous characters
 func isValidInput(input string) bool {
-	// Define a regex pattern to disallow dangerous characters (e.g., ; & | $ ` \)
 	pattern := `^[\w\-\.]+$` // allows only alphanumeric characters, hyphens, dots, and underscores
 	return regexp.MustCompile(pattern).MatchString(input)
 }
 
 func subscribe_topic(topic string) {
+	hostname, _ := os.Hostname()
 	for {
 		sub, err := sh.PubSubSubscribe(topic)
 		if err != nil {
 			fmt.Println("Failed to subscribe to topic:", err)
 			continue
 		}
-		
+
 		r, err := sub.Next()
 		if err != nil {
 			fmt.Println("Failed to get next message:", err)
@@ -75,14 +67,13 @@ func subscribe_topic(topic string) {
 		sr := &SeekResult{}
 
 		err = json.Unmarshal(r.Data, sk)
-		sr.Uuid = sk.Uuid
 		if err != nil {
 			fmt.Println("error unmarshaling", err)
 			sub.Cancel()
 			continue
 		}
 
-		depth := fmt.Sprintf("%d", sk.Depth)
+		sr.Uuid = sk.Uuid
 		sr.Host = hostname
 		sr.CrawlVersion = sk.CrawlVersion
 
@@ -93,18 +84,12 @@ func subscribe_topic(topic string) {
 			seedstr := fmt.Sprintf("%d", seed)
 			sr.Seed = seedstr
 
-			// Validate input
-			if !isValidInput(sr.CrawlVersion) || !isValidInput(seedstr) || !isValidInput(depth) {
+			if !isValidInput(sr.CrawlVersion) || !isValidInput(seedstr) || !isValidInput(fmt.Sprintf("%d", sk.Depth)) {
 				fmt.Println("Input validation failed for attempt:", i)
 				break
 			}
 
-			// to get version ./crawl -version | head -n 1 | cut -f 3 -d ' '
-			//cmd := exec.Command("/home/junger/crawl/crawl-ref/source/util/fake_pty","/home/junger/crawl/crawl-ref/source/crawl-debug", "-script", "seed_explorer.lua", "-seed", "random", "-depth", depth, "-artefacts")
-			//cmdstring := fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty /crawl/%s/crawl-ref/source/crawl -script seed_explorer.lua -seed %s -depth %s",sr.CrawlVersion, sr.CrawlVersion, seedstr,depth)
-			//fmt.Println("Cmdring:",cmdstring)
-			cmd := exec.Command(fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty", sr.CrawlVersion), fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/crawl", sr.CrawlVersion), "-script", "seed_explorer.lua", "-seed", seedstr, "-depth", depth)
-			fmt.Println("Cmd path:", cmd.Path)
+			cmd := exec.Command(fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty /crawl/%s/crawl/crawl-ref/source/crawl", sr.CrawlVersion, sr.CrawlVersion), "-script", "seed_explorer.lua", "-seed", seedstr, "-depth", fmt.Sprintf("%d", sk.Depth))
 			cmd.Dir = fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source", sr.CrawlVersion)
 
 			cmd.Env = []string{"TERM=vt100"}
@@ -120,9 +105,7 @@ func subscribe_topic(topic string) {
 
 			out, _ := io.ReadAll(stderr)
 
-			fmt.Println(string(out))
-
-			if match, _ := regexp.Match(sk.Regexp, out); match {
+			match, _ := regexp.Match(sk.Regexp, out); if match {
 				fmt.Println("matched")
 				sr.Success = true
 			} else {
@@ -142,7 +125,6 @@ func subscribe_topic(topic string) {
 				break
 			}
 
-			fmt.Println("IPFS HASH:", hash)
 			sr.IPFSHash = hash
 			break
 		}
@@ -158,8 +140,10 @@ func subscribe_topic(topic string) {
 
 		// Close the subscription after processing the message
 		sub.Cancel()
-
-		//time.Sleep(10 * time.Second)
 	}
-
 }
+
+func main() {
+	subscribe_topic("crawlseedqueries")
+}
+
