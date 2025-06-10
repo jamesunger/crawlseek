@@ -89,7 +89,8 @@ func subscribe_topic(topic string) {
 				break
 			}
 
-			cmd := exec.Command(fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty /crawl/%s/crawl/crawl-ref/source/crawl", sr.CrawlVersion, sr.CrawlVersion), "-script", "seed_explorer.lua", "-seed", seedstr, "-depth", fmt.Sprintf("%d", sk.Depth))
+			cmd := exec.Command(fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/util/fake_pty", sr.CrawlVersion), fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source/crawl", sr.CrawlVersion), "-script", "seed_explorer.lua", "-seed", seedstr, "-depth", fmt.Sprintf("%d", sk.Depth))
+			fmt.Println("Command execution: ", cmd)
 			cmd.Dir = fmt.Sprintf("/crawl/%s/crawl/crawl-ref/source", sr.CrawlVersion)
 
 			cmd.Env = []string{"TERM=vt100"}
