@@ -19,7 +19,6 @@ import (
 var sh = shell.NewShell("localhost:5001")
 var fileMutex sync.Mutex // Create a mutex for file access synchronization
 
-
 type SeekQuery struct {
 	Uuid         string
 	Attempts     int
@@ -37,11 +36,26 @@ type SeekResult struct {
 	Seed         string
 }
 
+type noCache struct {
+    http.Handler
+}
+
+func (n *noCache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+    w.Header().Set("Pragma", "no-cache") // HTTP 1.0
+    w.Header().Set("Expires", "0") // Proxies
+    n.Handler.ServeHTTP(w, r)
+}
+
+
+
 func main() {
 
-	fs := http.FileServer(http.Dir("."))
-	http.Handle("/", fs)
 
+        fileServer := http.FileServer(http.Dir("."))
+        noCacheFS := &noCache{fileServer}
+        http.Handle("/", noCacheFS)
+		
 	http.HandleFunc("/result", func(w http.ResponseWriter, r *http.Request) {
 		hash, ok := r.URL.Query()["resulthash"]
 		if !ok {
@@ -107,11 +121,18 @@ func main() {
 			CrawlVersion: version}
 		publish_sk(sk)
 
-		fmt.Fprintf(w, `<p>Query is published and results are collected here.</p>
-		<p>Redirecting in 5 seconds...</p>
-		<meta http-equiv="refresh" content="5; url=/results/%s.html" />
-		<a href="/results/%s.html">If you are not redirected, click here.</a>`, sk.Uuid, sk.Uuid)
-
+		// Set response header to application/json
+		w.Header().Set("Content-Type", "application/json")
+		
+		// Create response object
+		response := struct {
+			ResultsURL string `json:"results_url"`
+		}{
+			ResultsURL: fmt.Sprintf("results/%s.html", sk.Uuid),
+		}
+		
+		// Encode and send JSON response
+		json.NewEncoder(w).Encode(response)
 	})
 
 	go monitor_results("crawlseedresults")
@@ -144,13 +165,10 @@ func monitor_results(topic string) {
 			continue
 		}
 
-		//fmt.Println("Got result", string(sr.Output))
 		fmt.Println("Got result", sr.Uuid)
 
-
-
 		// Lock the file for writing
-                fileMutex.Lock()
+		fileMutex.Lock()
 		if sr.Success {
 
 			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
@@ -159,7 +177,7 @@ func monitor_results(topic string) {
 				fmt.Println("Error opening file for success append", err)
 				continue
 			}
-			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s %s <a href=\"/result?resulthash=%s\">%s</a></p>\n", sr.Host, sr.CrawlVersion, sr.Seed, sr.IPFSHash, sr.IPFSHash)); err != nil {
+			if _, err := f.WriteString(fmt.Sprintf("%s: %s %s %s\n", sr.Host, sr.CrawlVersion, sr.Seed, sr.IPFSHash)); err != nil {
 				fmt.Println("Error writing to result :", err)
 			}
 
@@ -176,15 +194,13 @@ func monitor_results(topic string) {
 				fmt.Println("Error opening file for append", err)
 				continue
 			}
-			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s gave up</a></p>\n", sr.Host, sr.CrawlVersion)); err != nil {
+			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s gave up</p>\n", sr.Host, sr.CrawlVersion)); err != nil {
 				fmt.Println("Error writing to fail result:", err)
 			}
 			f.Close()
 		}
 		fileMutex.Unlock()
-
 	}
-
 }
 
 func publish_sk(sk *SeekQuery) error {
@@ -222,7 +238,8 @@ func monitor_queries(topic string) {
 			continue
 		}
 
-		        ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte(fmt.Sprintf("<p>Version: %s</p>\n<meta http-equiv=\"refresh\" content=\"5; url=/results/%s.html\" />", sr.CrawlVersion, sr.Uuid)), 0644)
+		resultsURL := fmt.Sprintf("Generating %s...\n", sr.Uuid)
+		ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte(resultsURL), 0644);
 	}
 }
 
