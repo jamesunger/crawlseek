@@ -1,9 +1,18 @@
 import React from 'react';
-import './App.css'; // assuming you create this stylesheet
+import './App.css';
+
+function Navbar() {
+    return (
+        <nav className="navbar">
+            <div className="logo">crawlseek</div>
+        </nav>
+    );
+}
 
 function App() {
     return (
         <div className="App">
+            <Navbar />
             <h1>Dungeon Crawl Stone Soup Seed Finder</h1>
             <h2>Choose some constraints below and search for a seed that matches.</h2>
             <form method="post" action="/enqueue">
@@ -73,3 +82,4 @@ function App() {
 }
 
 export default App;
+
