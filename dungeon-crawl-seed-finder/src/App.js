@@ -23,10 +23,10 @@ function App() {
                     const response = await fetch(resultsUrl);
                     const result = await response.text();
                     setResults(result);
-		    setIsLoading(false);
+                    setIsLoading(false);
                 } catch (error) {
                     setResults('Error fetching results: ' + error.message);
-		    setIsLoading(false);
+                    setIsLoading(false);
                 }
             }
         };
@@ -72,9 +72,48 @@ function App() {
         }
     };
 
+    const renderResults = () => {
+        if (!results) return null;
+        
+        try {
+            const parsedResults = JSON.parse(results);
+            if (!Array.isArray(parsedResults)) {
+                return <div>Invalid results format</div>;
+            }
+
+            return (
+                <table className="results-table">
+                    <thead>
+                        <tr>
+                            <th>Host</th>
+                            <th>Seed</th>
+                            <th>IPFS Hash</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {parsedResults.map((result, index) => (
+                            <tr key={index}>
+                                <td>{result.host}</td>
+                                <td>{result.seed}</td>
+                                <td>
+                                    <a href={`/result?resulthash=${result.ipfshash}`}>
+                                        {result.ipfshash}
+                                    </a>
+                                </td>
+                                <td>{result.status}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            );
+        } catch (error) {
+            return <div>Error parsing results: {error.message}</div>;
+        }
+    };
+
     return (
         <div className="App">
-            <Navbar />
             <h1>Dungeon Crawl Stone Soup Seed Finder</h1>
             <h2>Choose some constraints below and search for a seed that matches.</h2>
             <form onSubmit={handleSubmit}>
@@ -144,8 +183,7 @@ function App() {
             {isLoading && <div>Publishing request...</div>}
             {results && (
                 <div className="results">
-                    <h3>Results:</h3>
-                    {results}
+                    {renderResults()}
                 </div>
             )}
         </div>
