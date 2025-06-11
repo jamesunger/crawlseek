@@ -23,8 +23,10 @@ function App() {
                     const response = await fetch(resultsUrl);
                     const result = await response.text();
                     setResults(result);
+		    setIsLoading(false);
                 } catch (error) {
                     setResults('Error fetching results: ' + error.message);
+		    setIsLoading(false);
                 }
             }
         };
@@ -66,7 +68,7 @@ function App() {
         } catch (error) {
             setResults('Error: ' + error.message);
         } finally {
-            setIsLoading(false);
+            setIsLoading(true);
         }
     };
 
@@ -139,7 +141,7 @@ function App() {
             </form>
 
             {/* Results Section */}
-            {isLoading && <div>Loading...</div>}
+            {isLoading && <div>Publishing request...</div>}
             {results && (
                 <div className="results">
                     <h3>Results:</h3>
