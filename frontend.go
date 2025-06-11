@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"sync"
@@ -36,26 +35,30 @@ type SeekResult struct {
 	Seed         string
 }
 
+type ResultEntry struct {
+	Host         string `json:"host"`
+	CrawlVersion string `json:"crawl_version"`
+	Seed         string `json:"seed"`
+	IPFSHash     string `json:"ipfshash"`
+	Status       string `json:"status,omitempty"` // Added status field
+}
+
 type noCache struct {
-    http.Handler
+	http.Handler
 }
 
 func (n *noCache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-    w.Header().Set("Pragma", "no-cache") // HTTP 1.0
-    w.Header().Set("Expires", "0") // Proxies
-    n.Handler.ServeHTTP(w, r)
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")    // HTTP 1.0
+	w.Header().Set("Expires", "0")          // Proxies
+	n.Handler.ServeHTTP(w, r)
 }
 
-
-
 func main() {
+	fileServer := http.FileServer(http.Dir("."))
+	noCacheFS := &noCache{fileServer}
+	http.Handle("/", noCacheFS)
 
-
-        fileServer := http.FileServer(http.Dir("."))
-        noCacheFS := &noCache{fileServer}
-        http.Handle("/", noCacheFS)
-		
 	http.HandleFunc("/result", func(w http.ResponseWriter, r *http.Request) {
 		hash, ok := r.URL.Query()["resulthash"]
 		if !ok {
@@ -77,14 +80,12 @@ func main() {
 	})
 
 	http.HandleFunc("/enqueue", func(w http.ResponseWriter, r *http.Request) {
-		// enqueue the data
 		err := r.ParseForm()
 		if err != nil {
 			fmt.Println("Failed to parse form.")
 			return
 		}
 
-		// Basic input validation
 		version := r.Form.Get("crawl_version")
 		if version == "" {
 			http.Error(w, "Crawl version cannot be empty.", http.StatusBadRequest)
@@ -92,7 +93,6 @@ func main() {
 		}
 
 		regexpInput := r.Form.Get("regexp")
-		// Simple regex check for allowed characters in regex (optional based on your requirements)
 		if !isValidRegexp(regexpInput) {
 			http.Error(w, "Invalid regular expression.", http.StatusBadRequest)
 			return
@@ -101,7 +101,6 @@ func main() {
 		attempts := r.Form.Get("attempts")
 		depth := r.Form.Get("depth")
 
-		// Ensure that attempts and depth are valid numbers
 		atmpt, err := strconv.Atoi(attempts)
 		if err != nil || atmpt <= 0 || atmpt > 20 {
 			http.Error(w, "Attempts must be a positive number and less than 20.", http.StatusBadRequest)
@@ -114,43 +113,32 @@ func main() {
 			return
 		}
 
-		sk := &SeekQuery{Uuid: uuid.NewString(),
+		sk := &SeekQuery{
+			Uuid:         uuid.NewString(),
 			Attempts:     atmpt,
 			Regexp:       regexpInput,
 			Depth:        depthInt,
-			CrawlVersion: version}
+			CrawlVersion: version,
+		}
 		publish_sk(sk)
 
-		// Set response header to application/json
 		w.Header().Set("Content-Type", "application/json")
-		
-		// Create response object
 		response := struct {
 			ResultsURL string `json:"results_url"`
 		}{
 			ResultsURL: fmt.Sprintf("results/%s.html", sk.Uuid),
 		}
-		
-		// Encode and send JSON response
+
 		json.NewEncoder(w).Encode(response)
 	})
 
 	go monitor_results("crawlseedresults")
 	go monitor_queries("crawlseedqueries")
-	//go monitor_stale_files("results")
 
 	err := http.ListenAndServe(":8090", nil)
 	if err != nil {
 		panic(err)
 	}
-
-}
-
-func isValidRegexp(input string) bool {
-	// Adjust this regex based on what you consider a valid regex input
-	// This is a very simple check for demonstration purposes only
-	re := regexp.MustCompile(`^.*?$`)
-	return re.MatchString(input)
 }
 
 func monitor_results(topic string) {
@@ -167,44 +155,61 @@ func monitor_results(topic string) {
 
 		fmt.Println("Got result", sr.Uuid)
 
-		// Lock the file for writing
 		fileMutex.Lock()
+		filename := fmt.Sprintf("results/%s.html", sr.Uuid)
+
+		// Read existing entries or create new array
+		var entries []ResultEntry
+		content, err := ioutil.ReadFile(filename)
+		if err == nil {
+			json.Unmarshal(content, &entries)
+		}
+
+		// Create new entry
+		newEntry := ResultEntry{
+			Host:         sr.Host,
+			CrawlVersion: sr.CrawlVersion,
+			Seed:         sr.Seed,
+		}
+
 		if sr.Success {
-
-			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
-				os.O_APPEND|os.O_WRONLY, 0644)
-			if err != nil {
-				fmt.Println("Error opening file for success append", err)
-				continue
-			}
-			if _, err := f.WriteString(fmt.Sprintf("%s: %s %s %s\n", sr.Host, sr.CrawlVersion, sr.Seed, sr.IPFSHash)); err != nil {
-				fmt.Println("Error writing to result :", err)
-			}
-
+			newEntry.IPFSHash = sr.IPFSHash
+			newEntry.Status = "success"
 			err = sh.Pin(sr.IPFSHash)
 			if err != nil {
 				fmt.Println("Failed to pin output to IPFS.")
 			}
-			f.Close()
-
 		} else {
-			f, err := os.OpenFile(fmt.Sprintf("results/%s.html", sr.Uuid),
-				os.O_APPEND|os.O_WRONLY, 0644)
-			if err != nil {
-				fmt.Println("Error opening file for append", err)
-				continue
-			}
-			if _, err := f.WriteString(fmt.Sprintf("<p>%s: %s gave up</p>\n", sr.Host, sr.CrawlVersion)); err != nil {
-				fmt.Println("Error writing to fail result:", err)
-			}
-			f.Close()
+			newEntry.Status = "gave up"
 		}
+
+		entries = append(entries, newEntry)
+
+		// Write back to file
+		jsonData, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			fmt.Println("Error marshaling JSON:", err)
+			fileMutex.Unlock()
+			continue
+		}
+
+		err = ioutil.WriteFile(filename, jsonData, 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			fileMutex.Unlock()
+			continue
+		}
+
 		fileMutex.Unlock()
 	}
 }
 
-func publish_sk(sk *SeekQuery) error {
+func isValidRegexp(input string) bool {
+	re := regexp.MustCompile(`^.*?$`)
+	return re.MatchString(input)
+}
 
+func publish_sk(sk *SeekQuery) error {
 	payload, err := json.Marshal(sk)
 	if err != nil {
 		fmt.Println("Failed to marshal seek query.")
@@ -219,7 +224,6 @@ func publish_sk(sk *SeekQuery) error {
 		fmt.Println(string(payload))
 		return nil
 	}
-
 }
 
 func monitor_queries(topic string) {
@@ -238,8 +242,7 @@ func monitor_queries(topic string) {
 			continue
 		}
 
-		resultsURL := fmt.Sprintf("Generating %s...\n", sr.Uuid)
-		ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte(resultsURL), 0644);
+		ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte("[]"), 0644)
 	}
 }
 
