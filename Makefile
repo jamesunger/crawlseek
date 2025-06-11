@@ -11,7 +11,7 @@ HELM_SEEKER_DIR=$(SEEKER_DIR)/helm
 
 # Default make goal
 .PHONY: all
-all: upgrade-helm upgrade-seeker
+all: upgrade-seeker upgrade-helm
 #all: build-react-app build-docker publish-frontend publish-seeker upgrade-helm upgrade-seeker
 
 # Rule to build React app
