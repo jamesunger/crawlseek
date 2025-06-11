@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"sync"
@@ -83,6 +85,44 @@ func main() {
 		err := r.ParseForm()
 		if err != nil {
 			fmt.Println("Failed to parse form.")
+			return
+		}
+
+		// Verify hCaptcha token
+		hCaptchaResponse := r.Form.Get("h-captcha-response")
+		if hCaptchaResponse == "" {
+			http.Error(w, "Captcha verification failed.", http.StatusBadRequest)
+			return
+		}
+
+		// Get hCaptcha secret key from environment variable
+		hCaptchaSecret := os.Getenv("HCAPTCHA_SECRET_KEY")
+		if hCaptchaSecret == "" {
+			http.Error(w, "Server configuration error.", http.StatusInternalServerError)
+			return
+		}
+
+		// Verify the token with hCaptcha API
+		resp, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
+			"secret":   {hCaptchaSecret},
+			"response": {hCaptchaResponse},
+		})
+		if err != nil {
+			http.Error(w, "Failed to verify captcha.", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		var captchaResult struct {
+			Success bool `json:"success"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&captchaResult); err != nil {
+			http.Error(w, "Failed to parse captcha verification response.", http.StatusInternalServerError)
+			return
+		}
+
+		if !captchaResult.Success {
+			http.Error(w, "Invalid captcha.", http.StatusBadRequest)
 			return
 		}
 

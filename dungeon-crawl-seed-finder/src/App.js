@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import './App.css';
 
 function Navbar() {
@@ -15,6 +16,7 @@ function App() {
     const [results, setResults] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [resultsUrl, setResultsUrl] = useState(null);
+    const [captchaToken, setCaptchaToken] = useState(null);
 
     useEffect(() => {
         const fetchResults = async () => {
@@ -39,6 +41,11 @@ function App() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!captchaToken) {
+            alert('Please complete the captcha first');
+            return;
+        }
+
         setIsLoading(true);
         setResults('');
         setResultsUrl(null);
@@ -49,6 +56,7 @@ function App() {
         urlEncodedData.append('regexp', formData.get('regexp'));
         urlEncodedData.append('attempts', formData.get('attempts'));
         urlEncodedData.append('depth', formData.get('depth'));
+        urlEncodedData.append('h-captcha-response', captchaToken);
 
         try {
             const response = await fetch('/enqueue', {
@@ -70,6 +78,10 @@ function App() {
         } finally {
             setIsLoading(true);
         }
+    };
+
+    const handleVerificationSuccess = (token) => {
+        setCaptchaToken(token);
     };
 
     const renderResults = () => {
@@ -167,6 +179,16 @@ function App() {
                                 <option>10</option>
                                 <option>15</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {/* hCaptcha */}
+                    <div className="colContainer">
+                        <div className="col">
+                            <HCaptcha
+                                sitekey="491410d4-5e9c-43dc-a27c-64f86e22a6cc"
+                                onVerify={handleVerificationSuccess}
+                            />
                         </div>
                     </div>
 

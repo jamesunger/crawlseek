@@ -19,6 +19,12 @@ spec:
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           ports:
             - containerPort: {{ .Values.service.port }}
+          env:
+            - name: HCAPTCHA_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hcaptcha-secret
+                  key: hcaptcha_secret_key
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 
