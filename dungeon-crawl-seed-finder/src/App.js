@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import './App.css';
 
@@ -17,6 +17,7 @@ function App() {
     const [isLoading, setIsLoading] = useState(false);
     const [resultsUrl, setResultsUrl] = useState(null);
     const [captchaToken, setCaptchaToken] = useState(null);
+    const captchaRef = useRef(null);
 
     useEffect(() => {
         const fetchResults = async () => {
@@ -77,6 +78,11 @@ function App() {
             setResults('Error: ' + error.message);
         } finally {
             setIsLoading(true);
+            // Reset the captcha after submission
+            if (captchaRef.current) {
+                captchaRef.current.resetCaptcha();
+            }
+            setCaptchaToken(null);
         }
     };
 
@@ -188,6 +194,7 @@ function App() {
                             <HCaptcha
                                 sitekey="491410d4-5e9c-43dc-a27c-64f86e22a6cc"
                                 onVerify={handleVerificationSuccess}
+                                ref={captchaRef}
                             />
                         </div>
                     </div>
