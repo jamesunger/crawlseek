@@ -113,7 +113,7 @@ function App() {
                         {parsedResults.map((result, index) => (
                             <tr key={index}>
                                 <td>{result.host}</td>
-                                <td>{result.seed}</td>
+                                <td>{result.status !== 'gave up' ? result.seed : ''}</td>
                                 <td>
                                     <a href={`/result?resulthash=${result.ipfshash}`}>
                                         {result.ipfshash}
