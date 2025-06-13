@@ -18,11 +18,17 @@ function App() {
     const [resultsUrl, setResultsUrl] = useState(null);
     const [captchaToken, setCaptchaToken] = useState(null);
     const captchaRef = useRef(null);
+    const pollCountRef = useRef(0);
 
     useEffect(() => {
         const fetchResults = async () => {
             if (resultsUrl) {
+                if (pollCountRef.current >= 20) {
+                    setIsLoading(false);
+                    return;
+                }
                 try {
+                    pollCountRef.current += 1;
                     const response = await fetch(resultsUrl);
                     const result = await response.text();
                     setResults(result);
@@ -50,6 +56,7 @@ function App() {
         setIsLoading(true);
         setResults('');
         setResultsUrl(null);
+        pollCountRef.current = 0;
 
         const formData = new FormData(e.target);
         const urlEncodedData = new URLSearchParams();
