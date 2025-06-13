@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"net"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	//ipfsapi "github.com/ipfs/go-ipfs-api"
 	shell "github.com/ipfs/go-ipfs-api"
@@ -54,6 +56,33 @@ func (n *noCache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")    // HTTP 1.0
 	w.Header().Set("Expires", "0")          // Proxies
 	n.Handler.ServeHTTP(w, r)
+}
+
+func getClientIP(r *http.Request) string {
+    // 1. Check X-Real-IP header
+    ip := r.Header.Get("X-Real-IP")
+    if ip != "" {
+        return ip
+    }
+
+    // 2. Check X-Forwarded-For header
+    ip = r.Header.Get("X-Forwarded-For")
+    if ip != "" {
+        // X-Forwarded-For may contain multiple IPs
+        // The first IP is the original client IP
+        ips := strings.Split(ip, ",")
+        if len(ips) > 0 {
+            return strings.TrimSpace(ips[0])
+        }
+    }
+
+    // 3. Get IP from RemoteAddr
+    ip, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err != nil {
+        // RemoteAddr may not contain port
+        return r.RemoteAddr
+    }
+    return ip
 }
 
 func main() {
@@ -102,9 +131,11 @@ func main() {
 			return
 		}
 
+		remoteIP := getClientIP(r)
 		// Verify the token with hCaptcha API
 		resp, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
 			"secret":   {hCaptchaSecret},
+			"remoteip":   {remoteIP},
 			"response": {hCaptchaResponse},
 		})
 		if err != nil {
