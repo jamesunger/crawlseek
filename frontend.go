@@ -14,9 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	//ipfsapi "github.com/ipfs/go-ipfs-api"
 	shell "github.com/ipfs/go-ipfs-api"
-	// "flag"
 )
 
 var sh = shell.NewShell("localhost:5001")
@@ -275,6 +273,34 @@ func monitor_results(topic string) {
 	}
 }
 
+func processQueryData(data []byte) {
+	sr := &SeekQuery{}
+	err := json.Unmarshal(data, sr)
+	if err != nil {
+		fmt.Println("Error unmarshaling", err)
+		return
+	}
+
+	err = ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte("[]"), 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+}
+
+func monitor_queries(topic string) {
+	for {
+		sub, err := sh.PubSubSubscribe(topic)
+		if err != nil {
+			fmt.Println("Error subscribing to topic", err)
+			panic(err)
+		}
+		r, _ := sub.Next()
+
+		// Launch a goroutine to process the data
+		go processQueryData(r.Data)
+	}
+}
+
 func isValidRegexp(input string) bool {
 	re := regexp.MustCompile(`^.*?$`)
 	return re.MatchString(input)
@@ -294,26 +320,6 @@ func publish_sk(sk *SeekQuery) error {
 	} else {
 		fmt.Println(string(payload))
 		return nil
-	}
-}
-
-func monitor_queries(topic string) {
-	for {
-		sub, err := sh.PubSubSubscribe(topic)
-		if err != nil {
-			fmt.Println("Error subscribing to topic", err)
-			panic(err)
-		}
-		r, _ := sub.Next()
-
-		sr := &SeekQuery{}
-		err = json.Unmarshal(r.Data, sr)
-		if err != nil {
-			fmt.Println("Error unmarshaling", err)
-			continue
-		}
-
-		ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte("[]"), 0644)
 	}
 }
 
