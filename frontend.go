@@ -18,12 +18,23 @@ import (
 )
 
 var sh = shell.NewShell("localhost:5001")
-var rdb = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6379",
-	Password: "", // no password set
-	DB:       0,  // use default DB
-})
+var rdb *redis.Client
 var ctx = context.Background()
+
+func init() {
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "localhost:6379"
+	}
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:6379",redisHost),
+		Password: redisPassword,
+		Username: "crawlseek",
+		DB:       0, // use default DB
+	})
+}
 
 type SeekQuery struct {
 	Uuid         string

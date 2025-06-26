@@ -25,6 +25,13 @@ spec:
                 secretKeyRef:
                   name: hcaptcha-secret
                   key: hcaptcha_secret_key
+            - name: REDIS_HOST
+              value: "51.15.199.178"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-password
+                  key: password
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 

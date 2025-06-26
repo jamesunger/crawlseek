@@ -4,6 +4,10 @@ terraform {
     scaleway = {
       source = "scaleway/scaleway"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.6.2"
+    }
   }
   required_version = ">= 0.13"
 }
@@ -63,6 +67,31 @@ resource "scaleway_registry_namespace" "crawlseek" {
   is_public   = false
 }
 
+resource "random_password" "redis_password" {
+  length           = 16
+  special          = true
+  override_special = "*()-_=+[]{}<>:?"
+}
+
+resource "scaleway_redis_cluster" "crawlseek_redis" {
+  name        = "crawlseek-redis"
+  node_type   = "RED1-XS"
+  version = "6.2.7"
+  cluster_size = 1
+  zone        = "fr-par-1"
+  user_name   = "crawlseek"
+  password    = random_password.redis_password.result
+#  private_network {
+#    id = scaleway_vpc_private_network.pn.id
+#    service_ips = ["10.0.0.0/26"] # Please ensure this CIDR does not overlap with other subnets in your private network.
+#  }
+
+
+  acl {
+	ip = "51.15.192.83/32"
+  }
+}
+
 # Outputs
 output "kubeconfig" {
   sensitive = true
@@ -76,5 +105,14 @@ output "cluster_id" {
 
 output "docker-registry" {
   value = scaleway_registry_namespace.crawlseek.endpoint
+}
+
+output "redis_endpoint" {
+  value = one(scaleway_redis_cluster.crawlseek_redis.public_network).ips
+}
+
+output "redis_password" {
+  sensitive = true
+  value = random_password.redis_password.result
 }
 
