@@ -2,16 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import './App.css';
 
-function Navbar() {
-    return (
-        <nav className="navbar">
-            <div className="logo">
-                <a href="/">crawlseek</a>
-            </div>
-        </nav>
-    );
-}
-
 function App() {
     const [results, setResults] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -200,10 +190,12 @@ function App() {
                         <div className="col">
                             <HCaptcha
                                 sitekey="491410d4-5e9c-43dc-a27c-64f86e22a6cc"
+				theme="dark"
                                 onVerify={handleVerificationSuccess}
                                 ref={captchaRef}
                             />
                         </div>
+                        <div className="col"></div>
                     </div>
 
                     {/* Submit Button */}
@@ -211,6 +203,7 @@ function App() {
                         <div className="col">
                             <input type="submit" value="Submit" />
                         </div>
+                        <div className="col"></div>
                     </div>
                 </div>
             </form>
