@@ -82,14 +82,16 @@ resource "scaleway_redis_cluster" "crawlseek_redis" {
   user_name   = "crawlseek"
   password    = random_password.redis_password.result
 #  private_network {
-#    id = scaleway_vpc_private_network.pn.id
+#    id = "${scaleway_vpc_private_network.pn.id}"
 #    service_ips = ["10.0.0.0/26"] # Please ensure this CIDR does not overlap with other subnets in your private network.
 #  }
 
-
-  acl {
-	ip = "51.15.192.83/32"
+acl {
+    ip          = "0.0.0.0/0"
+    description = "Allow all"
   }
+
+
 }
 
 # Outputs
