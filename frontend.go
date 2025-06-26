@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,12 +12,18 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	shell "github.com/ipfs/go-ipfs-api"
+	"github.com/redis/go-redis/v9"
+	"context"
 )
 
 var sh = shell.NewShell("localhost:5001")
-var fileMutex sync.Mutex // Create a mutex for file access synchronization
+var rdb = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "", // no password set
+	DB:       0,  // use default DB
+})
+var ctx = context.Background()
 
 type SeekQuery struct {
 	Uuid         string
@@ -195,10 +200,24 @@ func main() {
 		response := struct {
 			ResultsURL string `json:"results_url"`
 		}{
-			ResultsURL: fmt.Sprintf("results/%s.html", sk.Uuid),
+			ResultsURL: fmt.Sprintf("results/%s.json", sk.Uuid),
 		}
 
 		json.NewEncoder(w).Encode(response)
+	})
+
+	http.HandleFunc("/results/", func(w http.ResponseWriter, r *http.Request) {
+		uuid := strings.TrimPrefix(r.URL.Path, "/results/")
+		uuid = strings.TrimSuffix(uuid, ".json")
+
+		val, err := rdb.Get(ctx, uuid).Result()
+		if err != nil {
+			http.Error(w, "Result not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(val))
 	})
 
 	go monitor_results("crawlseedresults")
@@ -224,14 +243,11 @@ func monitor_results(topic string) {
 
 		fmt.Println("Got result", sr.Uuid)
 
-		fileMutex.Lock()
-		filename := fmt.Sprintf("results/%s.html", sr.Uuid)
-
 		// Read existing entries or create new array
 		var entries []ResultEntry
-		content, err := ioutil.ReadFile(filename)
+		val, err := rdb.Get(ctx, sr.Uuid).Result()
 		if err == nil {
-			json.Unmarshal(content, &entries)
+			json.Unmarshal([]byte(val), &entries)
 		}
 
 		// Create new entry
@@ -254,22 +270,18 @@ func monitor_results(topic string) {
 
 		entries = append(entries, newEntry)
 
-		// Write back to file
+		// Write back to redis
 		jsonData, err := json.MarshalIndent(entries, "", "  ")
 		if err != nil {
 			fmt.Println("Error marshaling JSON:", err)
-			fileMutex.Unlock()
 			continue
 		}
 
-		err = ioutil.WriteFile(filename, jsonData, 0644)
+		err = rdb.Set(ctx, sr.Uuid, jsonData, 0).Err()
 		if err != nil {
-			fmt.Println("Error writing to file:", err)
-			fileMutex.Unlock()
+			fmt.Println("Error writing to redis:", err)
 			continue
 		}
-
-		fileMutex.Unlock()
 	}
 }
 
@@ -281,9 +293,9 @@ func processQueryData(data []byte) {
 		return
 	}
 
-	err = ioutil.WriteFile(fmt.Sprintf("results/%s.html", sr.Uuid), []byte("[]"), 0644)
+	err = rdb.Set(ctx, sr.Uuid, []byte("[]"), 0).Err()
 	if err != nil {
-		fmt.Println("Error writing to file:", err)
+		fmt.Println("Error writing to redis:", err)
 	}
 }
 
