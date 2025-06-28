@@ -50,7 +50,7 @@ resource "scaleway_k8s_pool"  "node_pool" {
 
 
     # Define the size of the nodes
-    size = 3
+    size = 1
 
     # You can specify the number of nodes in the pool
     count = 1
@@ -93,6 +93,7 @@ acl {
 
 
 }
+
 
 # Outputs
 output "kubeconfig" {
