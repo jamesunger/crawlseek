@@ -2,6 +2,8 @@
 REGISTRY=rg.fr-par.scw.cloud/crawlseek-cr
 FRONTEND_IMAGE=$(REGISTRY)/frontend:latest
 SEEKER_IMAGE=$(REGISTRY)/seeker:latest
+CRAWL_VERSIONS=\"0.24.1\", \"0.25.1\", \"0.26.1\", \"0.27.1\", \"0.28.0\", \"0.29.1\", \"0.30.2\", \"0.31.2\", \"0.32.1\", \"0.33.1\"
+SEEKER_CRAWL_VERSIONS :=$(shell echo "$(CRAWL_VERSIONS)" | tr -d ',')
 
 # Directories
 REACT_APP_DIR=dungeon-crawl-seed-finder
@@ -14,9 +16,14 @@ HELM_SEEKER_DIR=$(SEEKER_DIR)/helm
 all: upgrade-seeker upgrade-helm
 #all: build-react-app build-docker publish-frontend publish-seeker upgrade-helm upgrade-seeker
 
+# Generate versions.js for React app
+.PHONY: generate-versions-js
+generate-versions-js:
+	@echo "const crawlVersions = [\"trunk\", $(CRAWL_VERSIONS)];\nexport default crawlVersions;" > $(REACT_APP_DIR)/src/versions.js
+
 # Rule to build React app
 .PHONY: build-react-app
-build-react-app:
+build-react-app: generate-versions-js
 	cd $(REACT_APP_DIR) && npm install && npm run build
 
 # Rule to build the top level Dockerfile
@@ -32,7 +39,7 @@ publish-frontend: build-docker
 # Rule to build seeker Dockerfile
 .PHONY: build-seeker
 build-seeker:
-	docker build -t $(SEEKER_IMAGE) $(SEEKER_DIR)
+	docker build --build-arg CRAWL_VERSIONS="$(SEEKER_CRAWL_VERSIONS)" -t $(SEEKER_IMAGE) $(SEEKER_DIR)
 
 # Rule to publish the seeker image
 .PHONY: publish-seeker

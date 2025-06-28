@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
+import crawlVersions from './versions';
 import './App.css';
 
 function App() {
@@ -138,16 +139,9 @@ function App() {
                         <div className="col">Version</div>
                         <div className="col">
                             <select name="crawl_version">
-                                <option value="trunk">trunk</option>
-                                <option value="0.24.1">0.24.1</option>
-                                <option value="0.25.1">0.25.1</option>
-                                <option value="0.26.1">0.26.1</option>
-                                <option value="0.28.0">0.28.0</option>
-                                <option value="0.29.1">0.29.1</option>
-                                <option value="0.30.2">0.30.2</option>
-                                <option value="0.31.2">0.31.2</option>
-                                <option value="0.32.1">0.32.1</option>
-                                <option value="0.33.0">0.33.0</option>
+                                {crawlVersions.map(version => (
+                                    <option key={version} value={version}>{version}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
