@@ -240,60 +240,81 @@ func main() {
 	}
 }
 
-func monitor_results(topic string) {
-	for {
-		sub, _ := sh.PubSubSubscribe(topic)
-		r, _ := sub.Next()
-
-		sr := &SeekResult{}
-		err := json.Unmarshal(r.Data, sr)
-		if err != nil {
-			fmt.Println("Error unmarshaling", err)
-			continue
-		}
-
-		fmt.Println("Got result", sr.Uuid)
-
-		// Read existing entries or create new array
-		var entries []ResultEntry
-		val, err := rdb.Get(ctx, sr.Uuid).Result()
-		if err == nil {
-			json.Unmarshal([]byte(val), &entries)
-		}
-
-		// Create new entry
-		newEntry := ResultEntry{
-			Host:         sr.Host,
-			CrawlVersion: sr.CrawlVersion,
-			Seed:         sr.Seed,
-		}
-
-		if sr.Success {
-			newEntry.IPFSHash = sr.IPFSHash
-			newEntry.Status = "success"
-			err = sh.Pin(sr.IPFSHash)
-			if err != nil {
-				fmt.Println("Failed to pin output to IPFS.")
-			}
-		} else {
-			newEntry.Status = "gave up"
-		}
-
-		entries = append(entries, newEntry)
-
-		// Write back to redis
-		jsonData, err := json.MarshalIndent(entries, "", "  ")
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			continue
-		}
-
-		err = rdb.Set(ctx, sr.Uuid, jsonData, 0).Err()
-		if err != nil {
-			fmt.Println("Error writing to redis:", err)
-			continue
-		}
+func processResultData(data []byte) {
+	sr := &SeekResult{}
+	err := json.Unmarshal(data, sr)
+	if err != nil {
+		fmt.Println("Error unmarshaling", err)
+		return
 	}
+
+	fmt.Println("Got result", sr.Uuid)
+
+	// Read existing entries or create new array
+	var entries []ResultEntry
+	val, err := rdb.Get(ctx, sr.Uuid).Result()
+	if err == nil {
+		json.Unmarshal([]byte(val), &entries)
+	}
+
+	// Create new entry
+	newEntry := ResultEntry{
+		Host:         sr.Host,
+		CrawlVersion: sr.CrawlVersion,
+		Seed:         sr.Seed,
+	}
+
+	if sr.Success {
+		newEntry.IPFSHash = sr.IPFSHash
+		newEntry.Status = "success"
+		err = sh.Pin(sr.IPFSHash)
+		if err != nil {
+			fmt.Println("Failed to pin output to IPFS.")
+		}
+	} else {
+		newEntry.Status = "gave up"
+	}
+
+	entries = append(entries, newEntry)
+
+	// Write back to redis
+	jsonData, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return
+	}
+
+	err = rdb.Set(ctx, sr.Uuid, jsonData, 0).Err()
+	if err != nil {
+		fmt.Println("Error writing to redis:", err)
+		return
+	}
+}
+
+func monitor_results(topic string) {
+	sub, err := sh.PubSubSubscribe(topic)
+	if err != nil {
+		fmt.Println("Error subscribing to results topic", err)
+		panic(err)
+	}
+
+	for {
+
+		r, _ := sub.Next()
+		if err != nil {
+			fmt.Println("Error getting next message", err)
+			sub, err = sh.PubSubSubscribe(topic)
+			if err != nil {
+				fmt.Println("Error resubscribing to results topic", err)
+				panic(err)
+			}
+			continue
+		}
+
+		// Launch a goroutine to process the data
+		go processResultData(r.Data)
+	}
+	sub.Cancel()
 }
 
 func processQueryData(data []byte) {
@@ -311,17 +332,28 @@ func processQueryData(data []byte) {
 }
 
 func monitor_queries(topic string) {
-	for {
-		sub, err := sh.PubSubSubscribe(topic)
-		if err != nil {
-			fmt.Println("Error subscribing to topic", err)
-			panic(err)
-		}
-		r, _ := sub.Next()
+	sub, err := sh.PubSubSubscribe(topic)
+	if err != nil {
+		fmt.Println("Error subscribing to queries topic", err)
+		panic(err)
+	}
 
+	for {
+
+		r, err := sub.Next()
+		if err != nil {
+			fmt.Println("Error getting next message", err)
+			sub, err = sh.PubSubSubscribe(topic)
+			if err != nil {
+				fmt.Println("Error resubscribing queries to topic", err)
+				panic(err)
+			}
+			continue
+		}
 		// Launch a goroutine to process the data
 		go processQueryData(r.Data)
 	}
+	sub.Cancel()
 }
 
 func isValidRegexp(input string) bool {
