@@ -45,9 +45,13 @@ RUN wget https://dist.ipfs.io/go-ipfs/v0.29.0/go-ipfs_v0.29.0_linux-amd64.tar.gz
 # Copy and build the seeker application
 COPY seeker.go /root/
 COPY go.mod /root/
-RUN mkdir /root/seeker && \
+COPY crawlexec/crawlexec.go /root/crawlexec.go
+COPY crawlexec/go.mod /root/crawlexec.go.mod
+RUN mkdir -p /root/seeker/crawlexec && \
     cp /root/go.mod /root/seeker && \
     cp /root/seeker.go /root/seeker && \
+    cp /root/crawlexec.go /root/seeker/crawlexec/crawlexec.go && \
+    cp /root/crawlexec.go.mod /root/seeker/crawlexec/go.mod && \
     cd /root/seeker && \
     /usr/lib/go-1.18/bin/go get github.com/ipfs/go-ipfs-api && \
     /usr/lib/go-1.18/bin/go build seeker.go && \
@@ -55,6 +59,7 @@ RUN mkdir /root/seeker && \
 
 # Copy the launch script
 COPY launch.sh /bin/
+COPY watchdog.sh /bin/
 RUN chmod +x /bin/launch.sh
 
 # Set entrypoint

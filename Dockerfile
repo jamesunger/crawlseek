@@ -1,11 +1,11 @@
-FROM ubuntu:18.04
+FROM rg.fr-par.scw.cloud/crawlseek-cr/seeker:latest
 RUN mkdir -p /opt/frontend/bin/
 
 RUN apt-get update
 RUN apt-get -y install wget
 
-RUN wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
-RUN cd /usr/local && tar xvf /go*tar.gz
+RUN wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go.tar.gz
+RUN cd /usr/local && tar xvf /tmp/go.tar.gz
 
 
 RUN wget https://dist.ipfs.io/go-ipfs/v0.29.0/go-ipfs_v0.29.0_linux-amd64.tar.gz
