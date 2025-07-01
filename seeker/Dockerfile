@@ -4,7 +4,7 @@ FROM ubuntu:18.04
 RUN apt-get -y update && \
     apt-get -y install build-essential libncursesw5-dev bison flex liblua5.1-0-dev \
     libsqlite3-dev libz-dev pkg-config python3-yaml binutils-gold git python3-pretty-yaml \
-    python3-pip python3-ipython-genutils python python-yaml golang-1.18 wget
+    python3-pip python3-ipython-genutils python python-yaml golang-1.18 wget redis-tools jq
 
 # Create directories
 RUN mkdir -p /opt/seeker/bin /crawl/trunk

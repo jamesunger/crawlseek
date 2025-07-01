@@ -2,7 +2,7 @@ FROM rg.fr-par.scw.cloud/crawlseek-cr/seeker:latest
 RUN mkdir -p /opt/frontend/bin/
 
 RUN apt-get update
-RUN apt-get -y install wget
+RUN apt-get -y install wget redis-tools jq
 
 RUN wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go.tar.gz
 RUN cd /usr/local && tar xvf /tmp/go.tar.gz
@@ -20,9 +20,13 @@ RUN chmod +x /bin/launch.sh
 # Copy and build the frontend application
 COPY frontend.go /root/
 COPY go.mod /root/
-RUN mkdir /root/frontend && \
+COPY seeker/crawlexec/crawlexec.go /root/crawlexec.go
+COPY seeker/crawlexec/go.mod /root/crawlexec.go.mod
+RUN mkdir -p /root/frontend/seeker/crawlexec && \
     cp /root/go.mod /root/frontend && \
     cp /root/frontend.go /root/frontend && \
+    cp /root/crawlexec.go.mod /root/frontend/seeker/crawlexec/go.mod && \
+    cp /root/crawlexec.go /root/frontend/seeker/crawlexec/crawlexec.go && \
     cd /root/frontend && \
     /usr/local/go/bin/go get github.com/ipfs/go-ipfs-api && \
     /usr/local/go/bin/go get github.com/google/uuid && \

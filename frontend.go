@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"crawlexec"
+	"bytes"
 	shell "github.com/ipfs/go-ipfs-api"
 	"github.com/redis/go-redis/v9"
 	"context"
@@ -318,18 +320,75 @@ func monitor_results(topic string) {
 }
 
 func processQueryData(data []byte) {
-	sr := &SeekQuery{}
-	err := json.Unmarshal(data, sr)
+	sk := &SeekQuery{}
+	err := json.Unmarshal(data, sk)
 	if err != nil {
 		fmt.Println("Error unmarshaling", err)
 		return
 	}
 
-	err = rdb.Set(ctx, sr.Uuid, []byte("[]"), 0).Err()
+
+	err = rdb.Set(ctx, sk.Uuid, []byte("[]"), 0).Err()
 	if err != nil {
 		fmt.Println("Error writing to redis:", err)
 	}
+
+
+	findCrawlSeed(sk)
+
 }
+
+
+
+func findCrawlSeed(sk *SeekQuery) {
+        hostname, _ := os.Hostname()
+
+	sr := &SeekResult{}
+        sr.Uuid = sk.Uuid
+        sr.Host = hostname
+        sr.CrawlVersion = sk.CrawlVersion
+
+        foundSeed,reportBytes := crawlexec.SearchCrawl(sk.CrawlVersion, sk.Depth, sk.Regexp, sk.Attempts)
+
+        if foundSeed == "" {
+                fmt.Println("nomatch")
+        } else {
+                sr.Success = true
+                sr.Seed = foundSeed
+        }
+
+        r := bytes.NewReader(reportBytes)
+
+
+        hash, err := sh.Add(r)
+        if err != nil {
+        fmt.Println("Failed to add output to IPFS.")
+                return
+        }
+
+        err = sh.Pin(hash)
+        if err != nil {
+                fmt.Println("Failed to pin output to IPFS.")
+                return
+        }
+
+        sr.IPFSHash = hash
+
+        response, err := json.Marshal(sr)
+        if err != nil {
+                fmt.Println("Error marshaling response", err)
+                return
+        }
+
+        resp := sh.PubSubPublish("crawlseedresults", string(response))
+        if resp != nil {
+                fmt.Println("Sent", resp)
+        }
+
+}
+
+
+
 
 func monitor_queries(topic string) {
 	sub, err := sh.PubSubSubscribe(topic)
