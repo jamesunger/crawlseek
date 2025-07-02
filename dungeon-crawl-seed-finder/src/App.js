@@ -8,6 +8,7 @@ function App() {
     const [isLoading, setIsLoading] = useState(false);
     const [resultsUrl, setResultsUrl] = useState(null);
     const [captchaToken, setCaptchaToken] = useState(null);
+    const [showTooltip, setShowTooltip] = useState(false);
     const captchaRef = useRef(null);
     const pollCountRef = useRef(0);
 
@@ -148,7 +149,15 @@ function App() {
 
                     {/* Regexp */}
                     <div className="colContainer">
-                        <div className="col">Regexp</div>
+                        <div className="col">
+                            <span 
+                                className="tooltip-container"
+                                onMouseEnter={() => setShowTooltip(true)}
+                                onMouseLeave={() => setShowTooltip(false)}
+                            >
+                                Regexp
+                            </span>
+                        </div>
                         <div className="col">
                             <input type="text" name="regexp" />
                         </div>
@@ -207,6 +216,13 @@ function App() {
             {results && (
                 <div className="results">
                     {renderResults()}
+                </div>
+            )}
+
+            {/* Fixed position tooltip */}
+            {showTooltip && (
+                <div className="tooltip-overlay">
+			Example: 'quick blade', 'broad axe' or combining items '(?s)dagger of drain.*?orb of guile'
                 </div>
             )}
         </div>
